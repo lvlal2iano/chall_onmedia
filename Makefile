@@ -16,6 +16,7 @@ init: ## Init the project
 	docker exec -it ${DOCKER_PHP} php artisan migrate:fresh --seed
 	docker exec -it ${DOCKER_PHP} php artisan optimize:clear
 	docker exec -it ${DOCKER_PHP} composer dump-autoload --optimize
+	docker exec -it ${DOCKER_PHP} chmod -R 777 storage
 	docker exec -it ${DOCKER_PHP} npm i
 	docker exec -it ${DOCKER_PHP} npm run development
 
