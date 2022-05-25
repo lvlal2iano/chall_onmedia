@@ -1,76 +1,74 @@
-FROM alpine:latest
+FROM php:8.1-apache
 
-WORKDIR /var/www/html/
+ENV APP_HOME /var/www/html
+ARG UID=1000
+ARG GID=1000
+ENV USERNAME=www-data
 
-# Essentials
-RUN echo "UTC" > /etc/timezone
-RUN apk add --no-cache zip unzip curl sqlite nginx supervisor
+# install all the dependencies and enable PHP modules
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
+      procps \
+      nano \
+      git \
+      unzip \
+      libicu-dev \
+      zlib1g-dev \
+      libxml2 \
+      libxml2-dev \
+      libreadline-dev \
+      supervisor \
+      cron \
+      sudo \
+      libzip-dev \
+    && docker-php-ext-configure pdo_mysql --with-pdo-mysql=mysqlnd \
+    && docker-php-ext-configure intl \
+    && docker-php-ext-install \
+      pdo_mysql \
+      sockets \
+      intl \
+      opcache \
+      zip \
+    && rm -rf /tmp/* \
+    && rm -rf /var/list/apt/* \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Installing bash
-RUN apk add bash
-RUN sed -i 's/bin\/ash/bin\/bash/g' /etc/passwd
+# disable default site and delete all default files inside APP_HOME
+RUN a2dissite 000-default.conf
+RUN rm -r $APP_HOME
 
-# Installing PHP
-RUN apk add --no-cache php8 \
-    php8-common \
-    php8-fpm \
-    php8-pdo \
-    php8-opcache \
-    php8-zip \
-    php8-phar \
-    php8-iconv \
-    php8-cli \
-    php8-curl \
-    php8-openssl \
-    php8-mbstring \
-    php8-tokenizer \
-    php8-fileinfo \
-    php8-json \
-    php8-xml \
-    php8-xmlwriter \
-    php8-simplexml \
-    php8-dom \
-    php8-pdo_mysql \
-    php8-pdo_sqlite \
-    php8-tokenizer \
-    php8-pecl-redis
+# create document root, fix permissions for www-data user and change owner to www-data
+RUN mkdir -p $APP_HOME/public && \
+    mkdir -p /home/$USERNAME && chown $USERNAME:$USERNAME /home/$USERNAME \
+    && usermod -u $UID $USERNAME -d /home/$USERNAME \
+    && groupmod -g $GID $USERNAME \
+    && chown -R ${USERNAME}:${USERNAME} $APP_HOME
 
-RUN ln -fs /usr/bin/php8 /usr/bin/php
+# put apache and php config for Laravel, enable sites
+COPY ./docker/laravel.conf /etc/apache2/sites-available/laravel.conf
+COPY ./docker/laravel-ssl.conf /etc/apache2/sites-available/laravel-ssl.conf
+RUN a2ensite laravel.conf && a2ensite laravel-ssl
+COPY ./docker/php.ini /usr/local/etc/php/php.ini
 
+# enable apache modules
+RUN a2enmod rewrite
+RUN a2enmod ssl
 
-# Installing composer
-RUN curl -sS https://getcomposer.org/installer -o composer-setup.php
-RUN php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-RUN rm -rf composer-setup.php
+# install composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN chmod +x /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER 1
 
-# Configure supervisor
-RUN mkdir -p /etc/supervisor.d/
-COPY ./docker/supervisord.ini /etc/supervisor.d/supervisord.ini
+# generate certificates
+# TODO: change it and make additional logic for production environment
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/ssl-cert-snakeoil.key -out /etc/ssl/certs/ssl-cert-snakeoil.pem -subj "/C=AT/ST=Vienna/L=Vienna/O=Security/OU=Development/CN=example.com"
 
-# Configure PHP
-RUN mkdir -p /run/php/
-RUN touch /run/php/php8.0-fpm.pid
+# set working directory
+WORKDIR $APP_HOME
 
-COPY ./docker/php-fpm.conf /etc/php8/php-fpm.conf
-COPY ./docker/php.ini-production /etc/php8/php.ini
+USER ${USERNAME}
 
-# Configure nginx
-COPY ./docker/nginx.conf /etc/nginx/
-COPY ./docker/nginx-laravel.conf /etc/nginx/modules/
-
-RUN mkdir -p /run/nginx/
-RUN touch /run/nginx/nginx.pid
-
-RUN ln -sf /dev/stdout /var/log/nginx/access.log
-RUN ln -sf /dev/stderr /var/log/nginx/error.log
-
-#Install NPM
-RUN apk add --update nodejs npm
-
-# Building process
-COPY . .
-RUN composer install --no-dev
-RUN chown -R nobody:nobody /var/www/html/storage
+# copy source files and config file
+COPY --chown=${USERNAME}:${USERNAME} . $APP_HOME/
 
 EXPOSE 80
-CMD ["supervisord", "-c", "/etc/supervisor.d/supervisord.ini"]
