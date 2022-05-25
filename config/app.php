@@ -4,6 +4,10 @@ use Illuminate\Support\Facades\Facade;
 
 return [
 
+    'api_base_url' => 'https://api.edamam.com/search',
+    'api_app_key' => 'd273d5986f8f8640f612b373c218a5a4',
+    'api_app_id' => 'bf3486c2',
+
     /*
     |--------------------------------------------------------------------------
     | Application Name
