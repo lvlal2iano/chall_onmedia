@@ -57,6 +57,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN chmod +x /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER 1
 
+# Instalar NPM
+RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get install -y nodejs
+
 # set working directory
 WORKDIR $APP_HOME
 
