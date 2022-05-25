@@ -46,22 +46,16 @@ RUN mkdir -p $APP_HOME/public && \
 
 # put apache and php config for Laravel, enable sites
 COPY ./docker/laravel.conf /etc/apache2/sites-available/laravel.conf
-COPY ./docker/laravel-ssl.conf /etc/apache2/sites-available/laravel-ssl.conf
-RUN a2ensite laravel.conf && a2ensite laravel-ssl
+RUN a2ensite laravel.conf
 COPY ./docker/php.ini /usr/local/etc/php/php.ini
 
 # enable apache modules
 RUN a2enmod rewrite
-RUN a2enmod ssl
 
 # install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN chmod +x /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER 1
-
-# generate certificates
-# TODO: change it and make additional logic for production environment
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/ssl-cert-snakeoil.key -out /etc/ssl/certs/ssl-cert-snakeoil.pem -subj "/C=AT/ST=Vienna/L=Vienna/O=Security/OU=Development/CN=example.com"
 
 # set working directory
 WORKDIR $APP_HOME
