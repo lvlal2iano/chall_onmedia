@@ -17,6 +17,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(Client::class, function($app) {
             return new Client([
                 'base_uri' => config('app.api_base_url'),
+                'Accept-Encoding' => 'gzip',
+                'Content-Encoding' => 'gzip',
             ]);
         });
     }
