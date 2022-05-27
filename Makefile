@@ -10,7 +10,7 @@ WWWUSER=1000
 init: ## Init the project
 	clear
 	docker-compose up --build --force-recreate -d --remove-orphans
-	docker exec -it ${DOCKER_PHP} composer install
+	docker exec -it ${DOCKER_PHP} composer install --with-all-dependencies
 	docker exec -it ${DOCKER_PHP} cp -f .env.example .env
 	docker exec -it ${DOCKER_PHP} php artisan key:generate
 	docker exec -it ${DOCKER_PHP} php artisan migrate:fresh --seed
