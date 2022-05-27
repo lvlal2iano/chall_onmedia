@@ -42,6 +42,6 @@ Levantar servidor local (Se recomienda Laragon).
 
 `npm run development`
 
-Listo!
+Listo, entrando a http://localhost ya se podria ver el proyecto.
 
 Demo: [http://54.91.180.243/] - Montado en instancia EC2 de AWS.
